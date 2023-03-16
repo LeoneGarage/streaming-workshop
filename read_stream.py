@@ -51,7 +51,6 @@ def readStream():
   awsSecretKey = dbutils.secrets.get("leone", "secret")
   kinesisStreamName = "leone-cdc"
   kinesisRegion = "us-west-2"
-  tableName = "Table1"
   kinesisStreamDf = (
                       spark.readStream
                       .format("kinesis")
@@ -68,7 +67,12 @@ def readStream():
 
 # DBTITLE 1,Simple read from Kinesis
 kinesisStreamDf = readStream()
-dataStreamDf = kinesisStreamDf.select(from_json(col("data").cast("string"), schema).alias("data"), col("approximateArrivalTimestamp").alias("arrival_time")).select([col(f"data.{c}").alias(c) for c in cols] + [col("arrival_time"), current_timestamp().alias("processing_time")])
+display(kinesisStreamDf)
+
+# COMMAND ----------
+
+# DBTITLE 1,Extracted read from Kinesis
+dataStreamDf = readStream().select(from_json(col("data").cast("string"), schema).alias("data"), col("approximateArrivalTimestamp").alias("arrival_time")).select([col(f"data.{c}").alias(c) for c in cols] + [col("arrival_time"), current_timestamp().alias("processing_time")])
 display(dataStreamDf)
 
 # COMMAND ----------
@@ -88,7 +92,7 @@ queryStream = (
 
 # MAGIC %fs
 # MAGIC 
-# MAGIC ls s3a://databricks-leone/streaming-workshop/cp
+# MAGIC ls s3a://databricks-leone/streaming-workshop/cp/commits
 
 # COMMAND ----------
 
@@ -134,28 +138,36 @@ cleanup()
 
 # COMMAND ----------
 
+# DBTITLE 1,GroupBy with Watermark
 dataStreamDf = readStream().select(from_json(col("data").cast("string"), schema).alias("data")).select([col(f"data.{c}").alias(c) for c in cols])
-dataStreamDf = dataStreamDf.withWatermark("ts", "30 seconds")
+dataStreamDf = dataStreamDf.withWatermark("ts", "20 seconds")
 dataStreamDf = dataStreamDf.groupBy(window("ts", "10 seconds"),(col("id") % 2000).alias("group")).agg(sum("amount").alias("sum"))
 queryStream = (
                 dataStreamDf
                 .writeStream
                 .queryName("kinesis-reader")
                 .format("delta")
-                .outputMode("complete")
+                .outputMode("append")
                 .option("checkpointLocation", "s3a://databricks-leone/streaming-workshop/cp")
                 .start("s3a://databricks-leone/streaming-workshop/data")
               )
 
 # COMMAND ----------
 
+# MAGIC %fs
+# MAGIC 
+# MAGIC ls s3a://databricks-leone/streaming-workshop/cp/state/0
+
+# COMMAND ----------
+
+# DBTITLE 1,Testing Output Sinks
 dataStreamDf = readStream().select(from_json(col("data").cast("string"), schema).alias("data")).select([col(f"data.{c}").alias(c) for c in cols])
-dataStreamDf = dataStreamDf.withWatermark("ts", "30 seconds")
+dataStreamDf = dataStreamDf.withWatermark("ts", "20 seconds")
 dataStreamDf = dataStreamDf.groupBy(window("ts", "10 seconds", "5 seconds"),(col("id") % 2000).alias("group")).agg(sum("amount").alias("sum"))
 queryStream = (
                 dataStreamDf
                 .writeStream
-                .queryName("test")
+                .queryName("memory")
                 .format("memory")
                 .outputMode("update")
                 .start()
@@ -163,6 +175,27 @@ queryStream = (
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC 
+# MAGIC SELECT * FROM memory
+
+# COMMAND ----------
+
+dataStreamDf = readStream().select(from_json(col("data").cast("string"), schema).alias("data")).select([col(f"data.{c}").alias(c) for c in cols])
+dataStreamDf = dataStreamDf.withWatermark("ts", "20 seconds")
+dataStreamDf = dataStreamDf.groupBy(window("ts", "10 seconds", "5 seconds"),(col("id") % 2000).alias("group")).agg(sum("amount").alias("sum"))
+queryStream = (
+                dataStreamDf
+                .writeStream
+                .queryName("console")
+                .format("console")
+                .outputMode("update")
+                .start()
+              )
+
+# COMMAND ----------
+
+# DBTITLE 1,Testing Sources
 rateStreamDf = (
                       spark.readStream
                       .format("rate")
