@@ -177,7 +177,7 @@ queryStream = (
 
 # MAGIC %sql
 # MAGIC 
-# MAGIC SELECT * FROM memory
+# MAGIC SELECT count(*) FROM memory
 
 # COMMAND ----------
 
@@ -218,3 +218,24 @@ rateStreamDf = (
                       .load()
                     )
 display(rateStreamDf)
+
+# COMMAND ----------
+
+# DBTITLE 1,Append/Update Output Mode and emitted rows for aggregates
+dataStreamDf = readStream().select(from_json(col("data").cast("string"), schema).alias("data")).select([col(f"data.{c}").alias(c) for c in cols])
+dataStreamDf = dataStreamDf.withWatermark("ts", "20 minutes")
+dataStreamDf = dataStreamDf.groupBy(window("ts", "10 seconds", "5 seconds"),(col("id") % 2000).alias("group")).agg(sum("amount").alias("sum"))
+queryStream = (
+                dataStreamDf
+                .writeStream
+                .queryName("append_memory")
+                .format("memory")
+                .outputMode("append")
+                .start()
+              )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC SELECT count(*) FROM append_memory
