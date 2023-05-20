@@ -83,7 +83,7 @@ clickStreamDf = readStream("leone-clicks").select(from_json(col("data").cast("st
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC 
+# MAGIC
 # MAGIC CREATE TABLE  IF NOT EXISTS delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/impressions/bronze/data` (adId INT, impressionTime TIMESTAMP, arrival_time TIMESTAMP, processing_time TIMESTAMP) USING delta
 
 # COMMAND ----------
@@ -99,7 +99,7 @@ spark.sparkContext.setLocalProperty("spark.scheduler.pool", "impressions")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC 
+# MAGIC
 # MAGIC CREATE TABLE IF NOT EXISTS delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks/bronze/data` (adId INT, clickTime TIMESTAMP, click_arrival_time TIMESTAMP, click_processing_time TIMESTAMP) USING delta
 
 # COMMAND ----------
@@ -125,7 +125,7 @@ clicks = (
     )
 
 j = (
-    imps.join(clicks)
+    imps.join(clicks, "left")
     .onKeys('adId')
     .writeToPath("/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks_for_impressions/data")
     .option("checkpointLocation", "/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks_for_impressions/cp")
@@ -135,6 +135,28 @@ j = (
 
 # COMMAND ----------
 
+j.awaitAllProcessedAndStop()
+
+# COMMAND ----------
+
 # MAGIC %sql
-# MAGIC 
-# MAGIC SELECT * FROM delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks_for_impressions/data`
+# MAGIC
+# MAGIC SELECT * FROM delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks_for_impressions/data` WHERE clickTime is not null
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC SELECT a.adId, clickTime, click_arrival_time, click_processing_time, impressionTime, arrival_time, processing_time FROM delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/impressions/bronze/data` a
+# MAGIC LEFT JOIN delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks/bronze/data` b on a.adId = b.adId
+# MAGIC EXCEPT ALL
+# MAGIC SELECT adId, clickTime, click_arrival_time, click_processing_time, impressionTime, arrival_time, processing_time FROM delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks_for_impressions/data`
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC
+# MAGIC SELECT adId, clickTime, click_arrival_time, click_processing_time, impressionTime, arrival_time, processing_time FROM delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks_for_impressions/data`
+# MAGIC EXCEPT ALL
+# MAGIC SELECT a.adId, clickTime, click_arrival_time, click_processing_time, impressionTime, arrival_time, processing_time FROM delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/impressions/bronze/data` a
+# MAGIC LEFT JOIN delta.`/Users/leon.eller@databricks.com/streaming_workshop/advertising/clicks/bronze/data` b on a.adId = b.adId

@@ -222,6 +222,10 @@ object KinesisSink {
 
 // COMMAND ----------
 
+dbutils.fs.rm("s3a://databricks-leone/advertising/impressions/cp", true)
+
+// COMMAND ----------
+
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.streaming.Trigger
@@ -247,6 +251,10 @@ testMsg
   .foreach(KinesisSink(TOPIC_DML, "us-west-2", awsAccessKeyId, awsSecretKey))
   .option("checkpointLocation", checkPointDir)
   .start()
+
+// COMMAND ----------
+
+dbutils.fs.rm("s3a://databricks-leone/advertising/clicks/cp", true)
 
 // COMMAND ----------
 

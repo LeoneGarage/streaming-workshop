@@ -25,7 +25,7 @@ val parquetLocation = "s3a://databricks-leone/test_stream"
 // COMMAND ----------
 
 // MAGIC %python
-// MAGIC 
+// MAGIC
 // MAGIC def gen_dataset():
 // MAGIC   def gen_datetime(min_year=2018, max_year=datetime.now().year):
 // MAGIC       # generate a datetime in format yyyy-mm-dd hh:mm:ss.000000
@@ -33,9 +33,9 @@ val parquetLocation = "s3a://databricks-leone/test_stream"
 // MAGIC       years = max_year - min_year + 1
 // MAGIC       end = start + timedelta(days=365 * years)
 // MAGIC       return start + (end - start) * random.random()
-// MAGIC 
+// MAGIC
 // MAGIC   ops = ["I", "U"]
-// MAGIC 
+// MAGIC
 // MAGIC   step = 1000000
 // MAGIC   outDf = None
 // MAGIC   for i in range(0, 1):
@@ -49,15 +49,15 @@ val parquetLocation = "s3a://databricks-leone/test_stream"
 // COMMAND ----------
 
 // MAGIC %python
-// MAGIC 
+// MAGIC
 // MAGIC letters = string.ascii_lowercase
-// MAGIC 
+// MAGIC
 // MAGIC def get_random_string(length):
 // MAGIC     return ''.join(random.choice(letters) for i in range(length))
-// MAGIC 
+// MAGIC
 // MAGIC def gen_table(tableName):
 // MAGIC   ops = ["I", "U"]
-// MAGIC 
+// MAGIC
 // MAGIC   step = 1000000
 // MAGIC   outDf = None
 // MAGIC   for i in range(0, 1):
@@ -85,12 +85,12 @@ val parquetLocation = "s3a://databricks-leone/test_stream"
 
 // MAGIC %python
 // MAGIC for i in range(0, 50):
-// MAGIC   gen_table("Table2")
+// MAGIC   gen_table("Table1")
 
 // COMMAND ----------
 
 // MAGIC %python
-// MAGIC 
+// MAGIC
 // MAGIC df = spark.read.format("parquet").load("{}/{}".format(parquetLocation, "Table1"))
 // MAGIC df.count()
 
